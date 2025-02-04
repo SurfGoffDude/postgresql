@@ -68,18 +68,20 @@ Cкачаем 15 версию, в нашем случае это будет post
 
 На этом установка нашей БД PostgreSQL на Windows закончена.
 
-Вам также необходимо установить PostgreSQL-адаптер Psycopg 3 для Python. Выполните следующие ниже команды в командной оболочке виртуальной среды, чтобы его установить:
-
-pip install --upgrade pip           # upgrade pip to at least 20.3
-pip install "psycopg[binary]"
-
 Чтобы начать использовать psql, необходимо в меню Пуск -> Все Приложения найти папку PostgreSQL 15
 и запустить SQL Shell (psql):
 
 ![image](https://ucarecdn.com/64d8b570-ef39-48a6-9b62-3a937575de30/)
 
 
-## Создание базы данных
+# Создание базы данных и подключение к Django
+
+Вам также необходимо установить PostgreSQL-адаптер Psycopg3 для Python. Выполните следующие ниже команды в командной оболочке виртуальной среды, чтобы его установить:
+
+```
+pip install --upgrade pip           # upgrade pip to at least 20.3
+pip install "psycopg[binary]"
+```
 
 Введите следующую ниже команду, чтобы создать пользователя, который может создавать базы данных:
 
@@ -136,3 +138,94 @@ python -Xutf8 manage.py dumpdata --indent=2 --output=mysite_data.json
 Содержимое файла можно просмотреть, чтобы увидеть структуру JSON, которая включает в себя разнообразные объекты данных различных моделей установленных вами приложений.
 
 
+## Переключение базы данных
+
+Для начала скорректируйте значение параметра DATABASES в конфигурационном файле settings.py вашего проекта, чтобы оно соответствовало следующему виду:
+
+```
+DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': 'blog',
+        'USER': 'blog',
+        'PASSWORD': 'xxxxxx',
+        'HOST': '127.0.0.1',
+        'PORT': '5432',
+    }
+}
+```
+
+Вместо xxxxxx укажите свой пароль, который вы задали для пользователя blog при создании базы данных.
+
+Ваша новая база данных blog создана, но пока не содержит таблиц. Чтобы подготовить ее к использованию, выполните следующую команду для применения миграций:
+
+```
+python manage.py migrate
+```
+
+Вывод этой команды будет содержать отчёт обо всех примененных миграциях, как показано в примере ниже:
+
+```
+Operations to perform:
+  Apply all migrations: admin, auth, blog, contenttypes, sessions, sites, taggit
+Running migrations:
+  Applying contenttypes.0001_initial... OK
+  Applying auth.0001_initial... OK
+  Applying admin.0001_initial... OK
+  Applying admin.0002_logentry_remove_auto_add... OK
+  Applying admin.0003_logentry_add_action_flag_choices... OK
+  Applying contenttypes.0002_remove_content_type_name... OK
+  Applying auth.0002_alter_permission_name_max_length... OK
+  Applying auth.0003_alter_user_email_max_length... OK
+  Applying auth.0004_alter_user_username_opts... OK
+  Applying auth.0005_alter_user_last_login_null... OK
+  Applying auth.0006_require_contenttypes_0002... OK
+  Applying auth.0007_alter_validators_add_error_messages... OK
+  Applying auth.0008_alter_user_username_max_length... OK
+  Applying auth.0009_alter_user_last_name_max_length... OK
+  Applying auth.0010_alter_group_name_max_length... OK
+  Applying auth.0011_update_proxy_permissions... OK
+  Applying auth.0012_alter_user_first_name_max_length... OK
+  Applying taggit.0001_initial... OK
+  Applying taggit.0002_auto_20150616_2121... OK
+  Applying taggit.0003_taggeditem_add_unique_index... OK
+  Applying taggit.0004_alter_taggeditem_content_type_alter_taggeditem_tag... OK
+  Applying taggit.0005_auto_20220424_2025... OK
+  Applying blog.0001_initial... OK
+  Applying blog.0002_remove_post_blog_post_publish_bb7600_idx_and_more... OK
+  Applying blog.0003_comment... OK
+  Applying blog.0004_post_tags... OK
+  Applying sessions.0001_initial... OK
+  Applying sites.0001_initial... OK
+  Applying sites.0002_alter_domain_unique... OK
+ ```
+
+## Загрузка данных в новую базу данных
+
+Для загрузки данных из файла фикстуры в базу данных PostgreSQL, выполните такую команду:
+
+```
+python -Xutf8 manage.py loaddata mysite_data.json
+```
+
+В выводе команды будет указано сколько объектов было добавлено в базу данных:
+
+![image](https://ucarecdn.com/81e92b4c-551d-43a5-b4e2-96aadb63cb7e/)
+
+Число добавленных объектов может отличаться в зависимости от количества пользователей, постов, комментариев и других объектов, которые были созданы в базе данных ранее.
+
+
+В случае возникновения ошибки django.db.utils.IntegrityError: Problem installing fixture, необходимо запустить интерактивную оболочку Python:
+
+```
+python manage.py shell
+```
+
+И в ней необходимо выполнить следующие команды:
+
+```
+from django.contrib.contenttypes.models import ContentType
+ContentType.objects.all().delete()
+```
+
+После этого пробуем загрузить данные еще раз.
